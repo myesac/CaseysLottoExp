@@ -25,15 +25,31 @@ body {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Fixed glow layer — iOS ignores background-attachment: fixed */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(1200px 800px at 12% -10%, rgba(56, 89, 255, 0.28), transparent 60%),
     radial-gradient(1000px 700px at 110% 0%, rgba(167, 139, 250, 0.22), transparent 55%),
-    radial-gradient(900px 700px at 50% 120%, rgba(56, 225, 255, 0.14), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
-  -webkit-font-smoothing: antialiased;
+    radial-gradient(900px 700px at 50% 120%, rgba(56, 225, 255, 0.14), transparent 60%);
+}
+
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .app {
@@ -223,6 +239,12 @@ input[type='date']:hover {
   padding: 8px;
   margin: 18px 0 26px;
   overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
@@ -508,8 +530,10 @@ tbody tr {
   transition: background 0.15s;
 }
 
-tbody tr:hover {
-  background: rgba(255, 255, 255, 0.05);
+@media (hover: hover) {
+  tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
 
 tbody tr:last-child td {
@@ -670,17 +694,322 @@ tbody tr:last-child td {
   background: transparent;
 }
 
+/* Mobile — keep in sync with MOBILE_QUERY in src/useMediaQuery.js */
 @media (max-width: 640px) {
+  .app {
+    padding: 12px max(12px, env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .glass {
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+  }
+
+  /* 16px stops iOS Safari zooming in when a field is focused */
+  input,
+  select {
+    font-size: 16px !important;
+  }
+
+  .refresh-btn,
+  .btn-secondary,
+  .btn-danger {
+    min-height: 44px;
+  }
+
+  /* Header */
   .app-header {
     flex-direction: column;
     align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .brand {
+    gap: 12px;
+  }
+
+  .app-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+
+  .app-title {
+    font-size: 1.2rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .header-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .header-controls input,
+  .header-controls select {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .header-controls .refresh-btn {
+    grid-column: 1 / -1;
   }
 
   .header-filter {
     min-width: 0;
   }
 
+  /* Tabs stay reachable while scrolling */
+  .tabs {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    margin: 12px 0 16px;
+    padding: 6px;
+    background: rgba(12, 18, 38, 0.88);
+    scroll-snap-type: x proximity;
+  }
+
+  .tab {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    scroll-snap-align: start;
+  }
+
+  /* Views */
+  .content {
+    gap: 16px;
+  }
+
+  .content section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .content section .view-foot {
+    margin-top: -6px;
+  }
+
+  .view-head h2 {
+    font-size: 1.25rem;
+  }
+
+  .view-head p {
+    font-size: 0.88rem;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .stat-cards {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+  }
+
+  .filters-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .filters-row select {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chart-box {
+    height: 220px;
+  }
+
+  /* Draws */
   .draw-row {
-    gap: 12px;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .draw-date {
+    width: 100%;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .draw-balls {
+    gap: 6px;
+  }
+
+  .ball {
+    width: 34px;
+    height: 34px;
+    font-size: 0.9rem;
+  }
+
+  /* Tables become one card per row */
+  .table-wrap {
+    overflow-x: visible;
+  }
+
+  .table-wrap:not(.card) {
+    padding: 0;
+  }
+
+  .stack-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .stack-table,
+  .stack-table tbody,
+  .stack-table tr,
+  .stack-table td {
+    display: block;
+  }
+
+  .stack-table tr {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .stack-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .stack-table td {
+    display: grid;
+    grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+  }
+
+  .stack-table tbody tr td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .stack-table tbody tr td:last-child {
+    border-bottom: none;
+  }
+
+  .stack-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  /* Matches: "#n · numbers · hits" on one line, hit dates underneath */
+  .stack-table.matches-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 10px;
+  }
+
+  .stack-table.matches-table td,
+  .stack-table.matches-table tbody tr td {
+    display: block;
+    padding: 0;
+    border: none;
+  }
+
+  .stack-table.matches-table td::before {
+    content: none;
+  }
+
+  .stack-table.matches-table td[data-label='Set #'] {
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .stack-table.matches-table td[data-label='Set #']::before {
+    content: '#';
+  }
+
+  .stack-table.matches-table td[data-label='Size'] {
+    display: none;
+  }
+
+  .stack-table.matches-table td[data-label='Hits'] {
+    font-weight: 700;
+  }
+
+  .stack-table.matches-table td[data-label='Hits']::before {
+    content: 'Hits ';
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  .stack-table.matches-table td[data-label='Hit dates'] {
+    grid-column: 1 / -1;
+  }
+
+  .stack-table.matches-table td[data-label='Hit dates']:has(> .muted) {
+    display: none;
+  }
+
+  /* Set manager */
+  .manager-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manager-add-group {
+    flex-wrap: nowrap;
+  }
+
+  .manager-add-group input,
+  .manager-add-set input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .manager-group-actions {
+    width: 100%;
+  }
+
+  .manager-group-actions button {
+    flex: 1;
+  }
+
+  .manager-set-row {
+    gap: 8px;
+  }
+
+  .manager-add-set {
+    flex-wrap: nowrap;
   }
 }

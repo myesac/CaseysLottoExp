@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Lotto 54321 logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#18264f"/>
+      <stop offset="1" stop-color="#0b1226"/>
+    </linearGradient>
+    <linearGradient id="c" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6cecff"/>
+      <stop offset="1" stop-color="#1fb6e8"/>
+    </linearGradient>
+    <linearGradient id="v" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c9b3ff"/>
+      <stop offset="1" stop-color="#8b6df0"/>
+    </linearGradient>
+    <linearGradient id="o" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffc37a"/>
+      <stop offset="1" stop-color="#ff8a50"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <circle cx="23" cy="33" r="12" fill="url(#c)"/>
+  <circle cx="41" cy="33" r="12" fill="url(#v)"/>
+  <circle cx="32" cy="45" r="12" fill="url(#o)"/>
+  <text x="23" y="37" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#062433">5</text>
+  <text x="41" y="37" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#1b0b3a">4</text>
+  <text x="32" y="49" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="800" fill="#3a2003">3</text>
+</svg>

@@ -11,6 +11,7 @@ import MatchesView from './components/MatchesView.jsx'
 import StatsView from './components/StatsView.jsx'
 import FrequencyView from './components/FrequencyView.jsx'
 import SetManagerView from './components/SetManagerView.jsx'
+import { fetchAdmin } from './adminApi.js'
 
 const VIEWS = [
   { id: 'draws', label: 'Draws' },
@@ -119,7 +120,7 @@ export default function App() {
     setRefreshMessage(null)
     setRefreshError(null)
     try {
-      const res = await fetch('/api/refresh', { method: 'POST' })
+      const res = await fetchAdmin('/api/refresh', { method: 'POST' })
       if (!res.ok) {
         let msg = `Refresh failed (${res.status})`
         try {
@@ -143,7 +144,7 @@ export default function App() {
   }
 
   const saveNumberSets = async (sets) => {
-    const res = await fetch('/api/sets', {
+    const res = await fetchAdmin('/api/sets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ numberSets: sets }),

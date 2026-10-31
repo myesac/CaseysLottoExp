@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { buildFrequency, numberRange } from '../data.js'
+import useMediaQuery, { MOBILE_QUERY } from '../useMediaQuery.js'
 import {
   Bar,
   BarChart,
@@ -21,6 +22,7 @@ const tooltipStyle = {
 export default function FrequencyView({ draws }) {
   const freq = useMemo(() => buildFrequency(draws), [draws])
   const { min, max } = useMemo(() => numberRange(draws), [draws])
+  const isMobile = useMediaQuery(MOBILE_QUERY)
 
   const entries = []
   for (let n = min; n <= max; n += 1) {
@@ -79,9 +81,16 @@ export default function FrequencyView({ draws }) {
         <h3 className="card-title">Appearance count</h3>
         <div className="chart-box">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={entries} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+            <BarChart
+              data={entries}
+              margin={{ top: 8, right: isMobile ? 2 : 8, left: isMobile ? -24 : -18, bottom: 0 }}
+            >
               <CartesianGrid stroke="rgba(255, 255, 255, 0.06)" vertical={false} />
-              <XAxis dataKey="n" tick={{ fill: '#93a1c4', fontSize: 11 }} interval={1} />
+              <XAxis
+                dataKey="n"
+                tick={{ fill: '#93a1c4', fontSize: isMobile ? 10 : 11 }}
+                interval={isMobile ? 4 : 1}
+              />
               <YAxis allowDecimals={false} tick={{ fill: '#93a1c4', fontSize: 11 }} />
               <Tooltip
                 cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }}

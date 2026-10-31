@@ -79,7 +79,7 @@ export default function MatchesView({ matches = [], sets = {}, draws = [], group
               {name} <span className="muted">· {total} hits</span>
             </h3>
             <div className="table-wrap">
-              <table>
+              <table className="stack-table matches-table">
                 <thead>
                   <tr>
                     <th>Set #</th>
@@ -92,8 +92,8 @@ export default function MatchesView({ matches = [], sets = {}, draws = [], group
                 <tbody>
                   {rows.map((r) => (
                     <tr key={`${name}-${r.index}`}>
-                      <td>{r.index}</td>
-                      <td>
+                      <td data-label="Set #">{r.index}</td>
+                      <td data-label="Numbers">
                         <span className="chips">
                           {r.set.map((n) => (
                             <span key={n} className={`chip ${hotNumbers.has(n) ? 'hot' : ''}`}>
@@ -102,9 +102,9 @@ export default function MatchesView({ matches = [], sets = {}, draws = [], group
                           ))}
                         </span>
                       </td>
-                      <td>{r.size}</td>
-                      <td>{r.count}</td>
-                      <td>
+                      <td data-label="Size">{r.size}</td>
+                      <td data-label="Hits">{r.count}</td>
+                      <td data-label="Hit dates">
                         {r.hits.length === 0 ? (
                           <span className="muted">—</span>
                         ) : (

@@ -114,7 +114,7 @@ export default function StatsView({ matches, draws, sets = {} }) {
 
       <div className="glass card table-wrap">
         <h3 className="card-title">By group</h3>
-        <table>
+        <table className="stack-table">
           <thead>
             <tr>
               <th>Group</th>
@@ -127,11 +127,11 @@ export default function StatsView({ matches, draws, sets = {} }) {
           <tbody>
             {groupRows.map((r) => (
               <tr key={r.name}>
-                <td>{r.name}</td>
-                <td>{r.sets}</td>
-                <td>{r.matches}</td>
-                <td>{r.distinct}</td>
-                <td>{r.pct}%</td>
+                <td data-label="Group">{r.name}</td>
+                <td data-label="Sets">{r.sets}</td>
+                <td data-label="Matches">{r.matches}</td>
+                <td data-label="Distinct sets hit">{r.distinct}</td>
+                <td data-label="% of sets hit">{r.pct}%</td>
               </tr>
             ))}
           </tbody>
@@ -140,7 +140,7 @@ export default function StatsView({ matches, draws, sets = {} }) {
 
       <div className="glass card table-wrap">
         <h3 className="card-title">By game</h3>
-        <table>
+        <table className="stack-table">
           <thead>
             <tr>
               <th>Game</th>
@@ -153,11 +153,11 @@ export default function StatsView({ matches, draws, sets = {} }) {
           <tbody>
             {gameRows.map((r) => (
               <tr key={r.game}>
-                <td>{GAME_LABELS[r.game]}</td>
-                <td>{r.draws}</td>
-                <td>{r.matches}</td>
-                <td>{r.drawsWith}</td>
-                <td>{r.hitRate}%</td>
+                <td data-label="Game">{GAME_LABELS[r.game]}</td>
+                <td data-label="Draws">{r.draws}</td>
+                <td data-label="Matches">{r.matches}</td>
+                <td data-label="Draws with match">{r.drawsWith}</td>
+                <td data-label="Hit rate">{r.hitRate}%</td>
               </tr>
             ))}
           </tbody>

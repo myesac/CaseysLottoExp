@@ -3,12 +3,11 @@ import react from '@vitejs/plugin-react'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { mergeDraws, parseOfficialEntries, validateNumberSets } from './server/lottery.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const HISTORY_PATH = path.join(__dirname, 'data', 'number_history.json')
 const SETS_PATH = path.join(__dirname, 'data', 'numberSets.json')
-
-const GAME_ORDER = { lotto: 0, 'lotto-plus-1': 1, 'lotto-plus-2': 2 }
 
 function sendJson(res, obj) {
   res.setHeader('Content-Type', 'application/json')
@@ -26,30 +25,6 @@ function readBody(req) {
   })
 }
 
-function validateNumberSets(sets) {
-  if (!sets || typeof sets !== 'object' || Array.isArray(sets)) {
-    throw new Error('Invalid payload: expected { numberSets: { groupName: [[n, n, n], ...] } }')
-  }
-  for (const [name, list] of Object.entries(sets)) {
-    if (!name || !Array.isArray(list)) {
-      throw new Error(`Group "${name || '(unnamed)'}" must be an array of sets`)
-    }
-    for (const set of list) {
-      if (!Array.isArray(set) || (set.length !== 3 && set.length !== 4)) {
-        throw new Error(`A set in "${name}" must contain 3 or 4 numbers`)
-      }
-      for (const n of set) {
-        if (!Number.isInteger(n) || n < 1 || n > 47) {
-          throw new Error(`Numbers must be integers from 1 to 47 (got ${n} in "${name}")`)
-        }
-      }
-      if (new Set(set).size !== set.length) {
-        throw new Error(`A set in "${name}" contains duplicate numbers`)
-      }
-    }
-  }
-}
-
 function updatedAt() {
   return fs.statSync(HISTORY_PATH).mtime.toISOString()
 }
@@ -58,40 +33,6 @@ function readData() {
   const history = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8'))
   const numberSets = JSON.parse(fs.readFileSync(SETS_PATH, 'utf-8'))
   return { history, numberSets, updatedAt: updatedAt() }
-}
-
-function parseOfficialEntries(html) {
-  const m = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/)
-  if (!m) throw new Error('Could not locate draw data in lottery.ie response')
-  const data = JSON.parse(m[1])
-  const list = (data && data.props && data.props.pageProps && data.props.pageProps.list) || []
-  const entries = []
-
-  const add = (game, key) => {
-    const dates = (game && game.drawDates) || []
-    const grids = (game && game.grids) || []
-    if (!dates.length || !grids.length) return
-    const g = grids[0] || {}
-    const numbers = (g.standard || [[]])[0]
-    const additional = (g.additional || [[]])[0]
-    if (!Array.isArray(numbers) || numbers.length !== 6) return
-    entries.push({
-      date: String(dates[0]).slice(0, 10),
-      game: key,
-      numbers,
-      bonus: additional && additional[0] != null ? additional[0] : null,
-    })
-  }
-
-  for (const item of list) {
-    add(item && item.standard, 'lotto')
-    for (const ag of (item && item.addonGames) || []) {
-      const title = String((ag && ag.gameTitle) || '').toLowerCase()
-      if (title.includes('plus 1')) add(ag, 'lotto-plus-1')
-      else if (title.includes('plus 2')) add(ag, 'lotto-plus-2')
-    }
-  }
-  return entries
 }
 
 async function refreshData() {
@@ -105,26 +46,14 @@ async function refreshData() {
   const html = await res.text()
   const fetched = parseOfficialEntries(html)
 
-  const existing = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8'))
-  const seen = new Set(existing.map((e) => `${e.date}|${e.game}`))
-  let added = 0
-  for (const e of fetched) {
-    const key = `${e.date}|${e.game}`
-    if (!seen.has(key)) {
-      existing.push(e)
-      seen.add(key)
-      added += 1
-    }
-  }
+  const { history, added } = mergeDraws(
+    JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8')),
+    fetched,
+  )
 
-  existing.sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? -1 : 1
-    return (GAME_ORDER[a.game] || 9) - (GAME_ORDER[b.game] || 9)
-  })
-
-  fs.writeFileSync(HISTORY_PATH, JSON.stringify(existing, null, 2) + '\n')
+  fs.writeFileSync(HISTORY_PATH, JSON.stringify(history, null, 2) + '\n')
   return {
-    history: existing,
+    history,
     numberSets: JSON.parse(fs.readFileSync(SETS_PATH, 'utf-8')),
     added,
     updatedAt: updatedAt(),
