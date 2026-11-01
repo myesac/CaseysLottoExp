@@ -1,45 +1,53 @@
-import { useMemo, useState } from 'react'
-import { GAME_LABELS, formatDate, buildFrequency, setEntriesFrom } from '../data.js'
-import StatCard from './StatCard.jsx'
+// ----------------------------------------------------------------------------------
+//  Name:    MatchesView.jsx
+//  Author:  Mark Casey
+//
+//  Purpose: Matches view: draws where a number set fully matched.
+// ----------------------------------------------------------------------------------
 
+// ── Imports ───────────────────────────────────────────────
+import { useMemo, useState } from 'react'
+import {
+  GAME_LABELS,
+  buildFrequency,
+  formatDate,
+  matchRowsByGroup,
+  rankNumbers,
+} from '../data.js'
+import StatCard from './StatCard.jsx'
+import MultiSelect from './MultiSelect.jsx'
+
+// ── Constants ─────────────────────────────────────────────
+const HOT_COUNT = 6
+
+// ── Component ─────────────────────────────────────────────
 export default function MatchesView({ matches = [], sets = {}, draws = [], groupNames = [] }) {
   const [size, setSize] = useState('all')
-  const [group, setGroup] = useState('all')
+  const [selectedGroups, setGroups] = useState([])
+  // Renamed or deleted groups drop out; if none are left this means "All groups".
+  const groupFilter = useMemo(
+    () => selectedGroups.filter((g) => groupNames.includes(g)),
+    [selectedGroups, groupNames],
+  )
 
-  const hotNumbers = useMemo(() => {
-    const freq = buildFrequency(draws)
-    const entries = Object.keys(freq.all || {}).map(Number)
-    entries.sort((a, b) => (freq.all[b] - freq.all[a]) || (a - b))
-    return new Set(entries.slice(0, 6))
-  }, [draws])
+  const hotNumbers = useMemo(
+    () => new Set(rankNumbers(buildFrequency(draws).all, HOT_COUNT, 'hot')),
+    [draws],
+  )
 
   const count3 = matches.filter((m) => m.size === 3).length
   const count4 = matches.filter((m) => m.size === 4).length
 
-  const groups = useMemo(() => {
-    return setEntriesFrom(sets)
-      .filter(({ name }) => group === 'all' || name === group)
-      .map(({ name, sets: groupSets }) => {
-        const rows = groupSets
-          .map((set, i) => {
-            const hits = matches
-              .filter((m) => m.group === name && m.index === i + 1)
-              .sort((a, b) => (a.date < b.date ? 1 : -1))
-            return { index: i + 1, set, size: set.length, count: hits.length, hits }
-          })
-          .filter((r) => size === 'all' || r.size === Number(size))
-        rows.sort((a, b) => b.count - a.count || a.index - b.index)
-        const total = rows.reduce((sum, r) => sum + r.count, 0)
-        return { name, rows, total }
-      })
-      .filter(({ rows }) => rows.length > 0)
-  }, [sets, matches, group, size])
+  const groups = useMemo(
+    () => matchRowsByGroup(sets, matches, { groups: groupFilter, size }),
+    [sets, matches, groupFilter, size],
+  )
 
   return (
     <section>
       <div className="view-head">
         <h2>Number-set matches</h2>
-        <p>Every full match — each number in the set appears in the draw&apos;s 6 main numbers.</p>
+        <p>Every full match, each number in the set appears in the draw&apos;s 6 main numbers.</p>
       </div>
 
       <div className="stat-cards">
@@ -57,17 +65,13 @@ export default function MatchesView({ matches = [], sets = {}, draws = [], group
             <option value="4">4 numbers</option>
           </select>
         </label>
-        <label className="filter-field">
-          <span>Group</span>
-          <select value={group} onChange={(e) => setGroup(e.target.value)}>
-            <option value="all">All groups</option>
-            {groupNames.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-        </label>
+        <MultiSelect
+          label="Groups"
+          options={groupNames}
+          selected={groupFilter}
+          onChange={setGroups}
+          allLabel="All groups"
+        />
       </div>
 
       {groups.length === 0 ? (
@@ -91,7 +95,7 @@ export default function MatchesView({ matches = [], sets = {}, draws = [], group
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={`${name}-${r.index}`}>
+                    <tr key={r.set.join('-')}>
                       <td data-label="Set #">{r.index}</td>
                       <td data-label="Numbers">
                         <span className="chips">

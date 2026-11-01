@@ -1,8 +1,18 @@
-import { useEffect, useState } from 'react'
+// ----------------------------------------------------------------------------------
+//  Name:    SetManagerView.jsx
+//  Author:  Mark Casey
+//
+//  Purpose: Set Manager view: add, rename and remove number-set groups.
+//           Edits a draft shared with Generate Set (see useSetsDraft.js).
+// ----------------------------------------------------------------------------------
 
-const BALL_MIN = 1
-const BALL_MAX = 47
+// ── Imports ───────────────────────────────────────────────
+import { useState } from 'react'
+import { BALL_MAX, BALL_MIN, groupNameError, setKey } from '../data.js'
+import GroupHeader from './GroupHeader.jsx'
+import StatusMessage from './StatusMessage.jsx'
 
+// ── Parsing ───────────────────────────────────────────────
 function parseSetInput(text) {
   const nums = text
     .split(/[,\s]+/)
@@ -20,61 +30,33 @@ function parseSetInput(text) {
   return nums.sort((a, b) => a - b)
 }
 
-export default function SetManagerView({ sets = {}, onSave }) {
-  const [draft, setDraft] = useState({})
+function findSet(sets, key) {
+  for (const [group, list] of Object.entries(sets)) {
+    if (list.some((set) => setKey(set) === key)) return group
+  }
+  return null
+}
+
+// ── Component ─────────────────────────────────────────────
+export default function SetManagerView({ draft: setsDraft }) {
+  const { draft, dirty, saving, status, update, fail, save, renameGroup, deleteGroup } = setsDraft
   const [newGroup, setNewGroup] = useState('')
   const [addInputs, setAddInputs] = useState({})
-  const [renaming, setRenaming] = useState(null)
-  const [renameValue, setRenameValue] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
-
-  useEffect(() => {
-    setDraft(sets || {})
-    setAddInputs({})
-    setRenaming(null)
-    setError(null)
-    setSuccess(null)
-  }, [sets])
-
-  const dirty = JSON.stringify(draft) !== JSON.stringify(sets || {})
-
-  const update = (next) => {
-    setDraft(next)
-    setSuccess(null)
-    setError(null)
-  }
 
   const addGroup = () => {
     const name = newGroup.trim()
     if (!name) return
-    if (Object.prototype.hasOwnProperty.call(draft, name)) {
-      setError('A group with that name already exists')
+    const nameError = groupNameError(name)
+    if (nameError) {
+      fail(nameError)
+      return
+    }
+    if (Object.hasOwn(draft, name)) {
+      fail('A group with that name already exists')
       return
     }
     update({ ...draft, [name]: [] })
     setNewGroup('')
-  }
-
-  const renameGroup = (oldName, newNameRaw) => {
-    const newName = newNameRaw.trim()
-    if (!newName || newName === oldName) return
-    if (Object.prototype.hasOwnProperty.call(draft, newName)) {
-      setError('A group with that name already exists')
-      return
-    }
-    const next = {}
-    for (const [k, v] of Object.entries(draft)) {
-      next[k === oldName ? newName : k] = v
-    }
-    update(next)
-  }
-
-  const deleteGroup = (name) => {
-    const next = { ...draft }
-    delete next[name]
-    update(next)
   }
 
   const addSet = (group) => {
@@ -82,41 +64,17 @@ export default function SetManagerView({ sets = {}, onSave }) {
     if (!text) return
     try {
       const nums = parseSetInput(text)
+      const existing = findSet(draft, setKey(nums))
+      if (existing) throw new Error(`${nums.join(', ')} is already in "${existing}"`)
       update({ ...draft, [group]: [...(draft[group] || []), nums] })
       setAddInputs({ ...addInputs, [group]: '' })
     } catch (e) {
-      setError(e.message)
+      fail(e.message)
     }
   }
 
   const deleteSet = (group, index) => {
-    const next = { ...draft }
-    next[group] = (next[group] || []).filter((_, i) => i !== index)
-    update(next)
-  }
-
-  const save = async () => {
-    setSaving(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      await onSave(draft)
-      setSuccess('Changes saved')
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const startRename = (group) => {
-    setRenaming(group)
-    setRenameValue(group)
-  }
-
-  const commitRename = (group) => {
-    renameGroup(group, renameValue)
-    setRenaming(null)
+    update({ ...draft, [group]: draft[group].filter((_, i) => i !== index) })
   }
 
   const groups = Object.entries(draft)
@@ -148,51 +106,20 @@ export default function SetManagerView({ sets = {}, onSave }) {
         </button>
       </div>
 
-      {(error || success) && (
-        <div className={`refresh-status ${error ? 'error' : ''}`} role="status">
-          {error || success}
-        </div>
-      )}
+      <StatusMessage status={status} />
 
       {groups.length === 0 && <p className="empty">No groups yet. Add a group to get started.</p>}
 
       {groups.map(([name, list]) => (
         <div key={name} className="glass card">
-          <div className="manager-group-head">
-            {renaming === name ? (
-              <input
-                className="manager-rename"
-                value={renameValue}
-                autoFocus
-                onChange={(e) => setRenameValue(e.target.value)}
-                onBlur={() => commitRename(name)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitRename(name)
-                  if (e.key === 'Escape') setRenaming(null)
-                }}
-                aria-label="Rename group"
-              />
-            ) : (
-              <h3 className="card-title manager-group-title">
-                {name} <span className="muted">· {list.length} sets</span>
-              </h3>
-            )}
-            <div className="manager-group-actions">
-              <button className="btn-secondary" onClick={() => startRename(name)} type="button">
-                Rename
-              </button>
-              <button className="btn-danger" onClick={() => deleteGroup(name)} type="button">
-                Delete group
-              </button>
-            </div>
-          </div>
+          <GroupHeader name={name} count={list.length} onRename={renameGroup} onDelete={deleteGroup} />
 
           {list.length === 0 ? (
             <p className="empty">No sets in this group yet.</p>
           ) : (
             <div className="manager-set-list">
               {list.map((set, i) => (
-                <div key={i} className="manager-set-row">
+                <div key={setKey(set)} className="manager-set-row">
                   <span className="chips">
                     {set.map((n) => (
                       <span key={n} className="chip">

@@ -7,10 +7,12 @@ A dark glass-styled React web app that lists Irish Lotto draw history and finds 
 - **Refresh** — a *Refresh* button reads the latest draws from `lottery.ie` and appends only new draws to the history; the header shows when the data was last updated.
 - **Date selector** — choose the start date for the history review (defaults to 1 July 2026, and cannot go earlier).
 - **Game filter** — filter every view by Lotto, Lotto Plus 1, or Lotto Plus 2.
-- **Five views** — Draws, Matches, Frequency, Statistics, and Set Manager.
+- **Six views** — Draws, Matches, Frequency, Statistics, Set Manager, and Generate Set.
 - **Number-set manager** — add, rename, and remove groups and sets in the UI; changes persist via `POST /api/sets`.
+- **Set generator** — create groups of 10 random 3-number sets (1–45), then edit, re-roll, or remove them. No set may appear twice anywhere; the server enforces this too.
+- **Phone layout** — at 640px and below: a compact header with a Refresh icon, a sticky date/game filter row, and a bottom tab bar (Draws, Matches, Frequency, Stats, Sets; Sets switches between Manage and Generate).
 - **Shareable views** — the active view and filters are kept in the URL hash, so they can be bookmarked and shared.
-- **Branding** — a generated SVG logo with a matching favicon.
+- **Branding** — an "MKC" SVG logo used as the favicon, with matching PNG favicon and Apple touch icon.
 
 ## Architecture
 
@@ -19,7 +21,8 @@ A dark glass-styled React web app that lists Irish Lotto draw history and finds 
 | Layer | Choice |
 | --- | --- |
 | UI framework | React 18 |
-| Build tool | Vite 5 |
+| Build tool | Vite 8 |
+| Tests / lint | Vitest (`npm run test`), ESLint with react-hooks and security plugins (`npm run lint`) |
 | Styling | Plain CSS (glassmorphism) + Recharts for charts |
 | Data | Loaded at runtime from `/api/data`; Cloudflare uses persistent Workers KV storage, while local development writes to the JSON files in `data/` |
 | State | React `useState` / `useMemo` with lightweight hash-based routing |
@@ -44,31 +47,40 @@ lottery.ie (official draw history)
    src/data.js ──► derived data (matches, frequency, stats)
         │
         ▼
-   ActualsView · MatchesView · StatsView · FrequencyView · SetManagerView
+   ActualsView · MatchesView · StatsView · FrequencyView · SetManagerView · GenerateSetView
 ```
 
 - The local Vite middleware and Cloudflare Worker expose the same endpoints: `GET /api/data`, `POST /api/refresh`, and `POST /api/sets`. On Cloudflare, the files in `data/` are bundled as the initial data and copied into the `LOTTO_DATA` KV namespace on first use. Later refreshes and set changes update the hosted store and survive deploys; they do not write back to the repository.
-- Hosted writes require the `ADMIN_PASSWORD` secret. The app asks for this password when an admin performs a refresh or saves number-set changes. Reads remain public.
-- `App.jsx` fetches `/api/data` on load and after a refresh, then owns the **view**, **start-date**, and **game-filter** state via a lightweight hash router (`#/view?game=…&from=…`).
-- `src/data.js` is a set of pure helpers that derive matches, frequency, and statistics from the loaded data.
-- View components are pure renderers of the data handed to them.
+- Writes require the admin password, both hosted (the `ADMIN_PASSWORD` secret) and locally (`ADMIN_PASSWORD` in `.dev.vars`). The app asks for it in a masked dialog when an admin refreshes or saves number sets. Reads remain public.
+- `POST /api/sets` accepts only `application/json` bodies up to 100 KB. Hosted admin requests are rate limited to 10 per minute per IP (the `ADMIN_LIMITER` binding).
+- `useLottoData.js` fetches `/api/data` and provides refresh and save; `routing.js` keeps the **view**, **start-date**, and **game-filter** state in the URL hash (`#/view?game=…&from=…`).
+- `useSetsDraft.js` holds unsaved number-set edits in `App`, shared by Set Manager and Generate Set, so switching tabs keeps them and closing the page with unsaved changes asks first.
+- `src/data.js` is a set of pure helpers that derive matches, frequency, and statistics from the loaded data. View components render what they are given.
 
 ### Project structure
 
 ```
-Lotto-54321/
+CaseysLottoExp/
 ├── data/
 │   ├── number_history.json   # Draw results: { date, game, numbers[6], bonus }
 │   └── numberSets.json       # Named groups of 3- and 4-number sets
 ├── images/
 │   └── TheBailey.jpeg        # Original logo source
 ├── public/
-│   ├── favicon.png           # Generated 32×32 favicon
-│   └── logo.svg              # Generated SVG logo
+│   ├── _headers              # Cloudflare security headers (CSP etc.)
+│   ├── apple-touch-icon.png  # 180×180 iOS home-screen icon (rendered from the logo)
+│   ├── favicon.png           # 32×32 PNG favicon (rendered from the logo)
+│   └── logo.svg              # MKC logo, also the SVG favicon
 ├── src/
 │   ├── main.jsx              # React entry point
-│   ├── App.jsx               # Layout, tabs, date + game filters, refresh
+│   ├── App.jsx               # Layout, tabs, date + game filters
+│   ├── routing.js            # Hash routing
+│   ├── useLottoData.js       # Load, refresh, and save data
+│   ├── useSetsDraft.js       # Unsaved number-set edits
+│   ├── adminApi.js           # Admin password dialog + authorised fetch
 │   ├── data.js               # Pure data-derivation helpers
+│   ├── chartTheme.js         # Shared Recharts styling
+│   ├── useMediaQuery.js      # Media query hook
 │   ├── index.css             # Dark glass styling
 │   └── components/
 │       ├── ActualsView.jsx   # Draw listing
@@ -76,11 +88,20 @@ Lotto-54321/
 │       ├── StatsView.jsx     # Aggregate statistics + charts
 │       ├── FrequencyView.jsx # Number frequency histogram + hot/cold
 │       ├── SetManagerView.jsx# Add/rename/remove groups and sets
+│       ├── GenerateSetView.jsx # Generate random 3-number set groups
+│       ├── GroupHeader.jsx   # Group title with rename/delete
+│       ├── StatusMessage.jsx # Success/error banner
+│       ├── FilterControls.jsx# Date-from + game filters
+│       ├── MultiSelect.jsx   # Checkbox dropdown (Matches group filter)
+│       ├── BottomNav.jsx     # Phone bottom tab bar + Sets switch
+│       ├── Icon.jsx          # Inline SVG icons
 │       ├── Ball.jsx          # Reusable number ball
 │       └── StatCard.jsx      # Reusable stat card
+├── tests/                    # Vitest tests (shared module, data helpers, Worker)
 ├── index.html
 ├── vite.config.js            # Local API middleware
-├── server/lottery.js         # Shared draw parsing, merging, and validation
+├── eslint.config.js          # Lint rules
+├── server/lottery.js         # Shared parsing, merging, validation, and auth
 ├── worker/index.js           # Hosted API (Cloudflare Worker), backed by Workers KV
 ├── wrangler.jsonc            # Cloudflare Worker, static assets, and KV settings
 └── package.json
@@ -120,12 +141,13 @@ A number set **matches** a draw when **every number in the set appears in the dr
 | View | Purpose |
 | --- | --- |
 | **Draws** | Lists every draw (date and 6 main balls), grouped by game. |
-| **Matches** | Per-set hit history — hits and hit dates, filterable by set size and group. |
+| **Matches** | Per-set hit history — hits and hit dates, filterable by set size and by one or more groups (multi-select; none selected shows all). |
 | **Frequency** | Per-number appearance histogram with hottest/coldest numbers. |
 | **Statistics** | Totals, hit rate, and breakdowns by set size, group, and game, with charts. |
 | **Set Manager** | Add, rename, and remove groups and number sets; saved to the active data store. |
+| **Generate Set** | Generate groups of 10 unique random 3-number sets; edit, re-roll, or remove sets. Groups named "Generated Set …" appear here. |
 
-A global **game filter** (All / Lotto / Lotto Plus 1 / Lotto Plus 2) in the header applies to every view.
+A global **game filter** (All / Lotto / Lotto Plus 1 / Lotto Plus 2) applies to every view. It sits in the header on desktop and in the sticky filter row on phones.
 
 ### Design
 
@@ -144,9 +166,13 @@ npm install
 
 # run the dev server
 npm run dev
+
+# run tests and lint
+npm run test
+npm run lint
 ```
 
-Then open the URL printed by Vite (default `http://localhost:5173`).
+Then open the URL printed by Vite (default `http://localhost:5173`). To refresh or save locally, put `ADMIN_PASSWORD=...` in a `.dev.vars` file (gitignored); without it, local writes return 503.
 
 Production build:
 
@@ -173,7 +199,7 @@ To test the Worker locally, put `ADMIN_PASSWORD=...` in a `.dev.vars` file (giti
 
 Run these from the project folder each time you change the app and want to publish it. (Use `npm.cmd` / `npx.cmd` in PowerShell — see the note above.)
 
-1. **Test locally** — `npm.cmd run dev`, check the change at `http://localhost:5173`, then press Ctrl+C.
+1. **Test locally** — `npm.cmd run test` and `npm.cmd run lint`, then `npm.cmd run dev`, check the change at `http://localhost:5173`, and press Ctrl+C.
 2. **Build** — `npm.cmd run build`. Always rebuild first; `wrangler deploy` uploads whatever is in `dist/`.
 3. **Optional: test the Worker** — if you changed `worker/index.js` or `server/lottery.js`, run `npx.cmd wrangler dev` and try loading data, **Refresh**, and saving a set. Requires `.dev.vars`.
 4. **Deploy** — `npx.cmd wrangler deploy`. It prints the live URL when done.

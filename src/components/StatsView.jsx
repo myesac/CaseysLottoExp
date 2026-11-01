@@ -1,4 +1,12 @@
-import { GAMES, GAME_LABELS, computeMatchStats, setEntriesFrom } from '../data.js'
+// ----------------------------------------------------------------------------------
+//  Name:    StatsView.jsx
+//  Author:  Mark Casey
+//
+//  Purpose: Statistics view: match counts and charts per group and game.
+// ----------------------------------------------------------------------------------
+
+// ── Imports ───────────────────────────────────────────────
+import { GAME_LABELS, computeMatchStats, gameStats, groupStats } from '../data.js'
 import {
   Bar,
   BarChart,
@@ -8,45 +16,31 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { CHART_COLORS, GRID_STROKE, tickStyle, tooltipProps } from '../chartTheme.js'
 import StatCard from './StatCard.jsx'
 
-const tooltipStyle = {
-  background: '#111830',
-  border: '1px solid rgba(255, 255, 255, 0.14)',
-  borderRadius: 10,
-  color: '#eaf0ff',
+// ── Constants ─────────────────────────────────────────────
+const CHART_MARGIN = { top: 8, right: 8, left: -18, bottom: 0 }
+
+// ── Component ─────────────────────────────────────────────
+function MatchBarChart({ data, color }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={CHART_MARGIN}>
+        <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+        <XAxis dataKey="name" tick={tickStyle()} />
+        <YAxis allowDecimals={false} tick={tickStyle()} />
+        <Tooltip {...tooltipProps} formatter={(value) => [value, 'Matches']} />
+        <Bar dataKey="count" fill={color} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  )
 }
 
 export default function StatsView({ matches, draws, sets = {} }) {
   const s = computeMatchStats(matches, draws)
-  const setEntries = setEntriesFrom(sets)
-
-  const groupRows = setEntries.map(({ name, sets }) => {
-    const groupMatches = matches.filter((m) => m.group === name)
-    const distinct = new Set(groupMatches.map((m) => m.index)).size
-    return {
-      name,
-      sets: sets.length,
-      matches: groupMatches.length,
-      distinct,
-      pct: sets.length ? Math.round((distinct / sets.length) * 100) : 0,
-    }
-  })
-
-  const gameRows = GAMES.map((g) => {
-    const gm = matches.filter((m) => m.game === g)
-    const drawsForGame = draws.filter((d) => d.game === g)
-    const drawsWith = new Set(gm.map((m) => m.date)).size
-    return {
-      game: g,
-      draws: drawsForGame.length,
-      matches: gm.length,
-      drawsWith,
-      hitRate: drawsForGame.length
-        ? ((drawsWith / drawsForGame.length) * 100).toFixed(1)
-        : '0.0',
-    }
-  }).filter((r) => r.draws > 0)
+  const groupRows = groupStats(matches, sets)
+  const gameRows = gameStats(matches, draws)
 
   const sizeData = [
     { name: '3-number', count: s.bySize[3] || 0 },
@@ -72,42 +66,14 @@ export default function StatsView({ matches, draws, sets = {} }) {
         <div className="glass card">
           <h3 className="card-title">Matches by set size</h3>
           <div className="chart-box">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sizeData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(255, 255, 255, 0.06)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: '#93a1c4', fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fill: '#93a1c4', fontSize: 12 }} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }}
-                  contentStyle={tooltipStyle}
-                  labelStyle={{ color: '#eaf0ff' }}
-                  itemStyle={{ color: '#eaf0ff' }}
-                  formatter={(value) => [value, 'Matches']}
-                />
-                <Bar dataKey="count" fill="#38e1ff" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <MatchBarChart data={sizeData} color={CHART_COLORS.accent} />
           </div>
         </div>
 
         <div className="glass card">
           <h3 className="card-title">Matches by game</h3>
           <div className="chart-box">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={gameData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(255, 255, 255, 0.06)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: '#93a1c4', fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fill: '#93a1c4', fontSize: 12 }} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }}
-                  contentStyle={tooltipStyle}
-                  labelStyle={{ color: '#eaf0ff' }}
-                  itemStyle={{ color: '#eaf0ff' }}
-                  formatter={(value) => [value, 'Matches']}
-                />
-                <Bar dataKey="count" fill="#a78bfa" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <MatchBarChart data={gameData} color={CHART_COLORS.accent2} />
           </div>
         </div>
       </div>

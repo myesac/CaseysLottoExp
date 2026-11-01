@@ -1,5 +1,13 @@
+// ----------------------------------------------------------------------------------
+//  Name:    FrequencyView.jsx
+//  Author:  Mark Casey
+//
+//  Purpose: Frequency view: how often each number has been drawn.
+// ----------------------------------------------------------------------------------
+
+// ── Imports ───────────────────────────────────────────────
 import { useMemo } from 'react'
-import { buildFrequency, numberRange } from '../data.js'
+import { buildFrequency, numberRange, rankNumbers } from '../data.js'
 import useMediaQuery, { MOBILE_QUERY } from '../useMediaQuery.js'
 import {
   Bar,
@@ -11,14 +19,12 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { CHART_COLORS, GRID_STROKE, tickStyle, tooltipProps } from '../chartTheme.js'
 
-const tooltipStyle = {
-  background: '#111830',
-  border: '1px solid rgba(255, 255, 255, 0.14)',
-  borderRadius: 10,
-  color: '#eaf0ff',
-}
+// ── Constants ─────────────────────────────────────────────
+const RANK_COUNT = 6
 
+// ── Component ─────────────────────────────────────────────
 export default function FrequencyView({ draws }) {
   const freq = useMemo(() => buildFrequency(draws), [draws])
   const { min, max } = useMemo(() => numberRange(draws), [draws])
@@ -29,14 +35,8 @@ export default function FrequencyView({ draws }) {
     entries.push({ n, count: freq.all[n] || 0 })
   }
 
-  const hot = [...entries]
-    .sort((a, b) => b.count - a.count || a.n - b.n)
-    .slice(0, 6)
-    .map((e) => e.n)
-  const cold = [...entries]
-    .sort((a, b) => a.count - b.count || a.n - b.n)
-    .slice(0, 6)
-    .map((e) => e.n)
+  const hot = rankNumbers(freq.all, RANK_COUNT, 'hot')
+  const cold = rankNumbers(freq.all, RANK_COUNT, 'cold')
   const hotSet = new Set(hot)
   const coldSet = new Set(cold)
 
@@ -85,18 +85,11 @@ export default function FrequencyView({ draws }) {
               data={entries}
               margin={{ top: 8, right: isMobile ? 2 : 8, left: isMobile ? -24 : -18, bottom: 0 }}
             >
-              <CartesianGrid stroke="rgba(255, 255, 255, 0.06)" vertical={false} />
-              <XAxis
-                dataKey="n"
-                tick={{ fill: '#93a1c4', fontSize: isMobile ? 10 : 11 }}
-                interval={isMobile ? 4 : 1}
-              />
-              <YAxis allowDecimals={false} tick={{ fill: '#93a1c4', fontSize: 11 }} />
+              <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+              <XAxis dataKey="n" tick={tickStyle(isMobile ? 10 : 11)} interval={isMobile ? 4 : 1} />
+              <YAxis allowDecimals={false} tick={tickStyle(11)} />
               <Tooltip
-                cursor={{ fill: 'rgba(255, 255, 255, 0.04)' }}
-                contentStyle={tooltipStyle}
-                labelStyle={{ color: '#eaf0ff' }}
-                itemStyle={{ color: '#eaf0ff' }}
+                {...tooltipProps}
                 formatter={(value) => [`${value} draws`, 'Appearances']}
                 labelFormatter={(n) => `Number ${n}`}
               />
@@ -105,7 +98,11 @@ export default function FrequencyView({ draws }) {
                   <Cell
                     key={e.n}
                     fill={
-                      hotSet.has(e.n) ? '#ff7a59' : coldSet.has(e.n) ? '#4cc9f0' : '#38e1ff'
+                      hotSet.has(e.n)
+                        ? CHART_COLORS.hot
+                        : coldSet.has(e.n)
+                          ? CHART_COLORS.cold
+                          : CHART_COLORS.accent
                     }
                   />
                 ))}

@@ -1,3 +1,14 @@
+// ----------------------------------------------------------------------------------
+//  Name:    useMediaQuery.js
+//  Author:  Mark Casey
+//
+//  Purpose: React hook that tracks a CSS media query.
+//
+//  Exported API:
+//   • MOBILE_QUERY             → media query string
+//   • default useMediaQuery()  → boolean
+// ----------------------------------------------------------------------------------
+
 import { useEffect, useState } from 'react'
 
 // Keep in sync with the mobile breakpoint in index.css

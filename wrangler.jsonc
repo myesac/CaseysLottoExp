@@ -17,5 +17,16 @@
 			// Replace with the id printed by: npx wrangler kv namespace create LOTTO_DATA
 			"id": "624260a6596e42f1848b2b38827fcff3"
 		}
+	],
+	// Admin POSTs per client IP: 10 per 60 seconds (period must be 10 or 60)
+	"ratelimits": [
+		{
+			"name": "ADMIN_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		}
 	]
 }

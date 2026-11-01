@@ -1,5 +1,8 @@
-
 node_modules/
 run.bat
+build.bat
 .dev.vars
+.env*
+*.log
 .wrangler/
+dist/
